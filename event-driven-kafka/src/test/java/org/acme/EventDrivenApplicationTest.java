@@ -1,0 +1,45 @@
+package org.acme;
+
+import io.quarkus.test.junit.QuarkusTest;
+
+import org.citrusframework.GherkinTestActionRunner;
+import org.citrusframework.TestActionSupport;
+import org.citrusframework.annotations.CitrusEndpoint;
+import org.citrusframework.annotations.CitrusResource;
+import org.citrusframework.kafka.config.annotation.KafkaEndpointConfig;
+import org.citrusframework.kafka.endpoint.KafkaEndpoint;
+import org.citrusframework.quarkus.CitrusSupport;
+import org.junit.jupiter.api.Test;
+
+@QuarkusTest
+@CitrusSupport
+class EventDrivenApplicationTest implements TestActionSupport {
+
+    @CitrusEndpoint
+    @KafkaEndpointConfig(topic = "words-in")
+    KafkaEndpoint wordsIn;
+
+    @CitrusEndpoint
+    @KafkaEndpointConfig(topic = "words-out")
+    KafkaEndpoint wordsOut;
+
+    @CitrusResource
+    GherkinTestActionRunner runner;
+
+    @Test
+    void shouldHandleEvents() {
+        runner.when(
+            send()
+                .endpoint(wordsIn)
+                .message()
+                .body("Hi")
+        );
+
+        runner.then(
+            receive()
+                .endpoint(wordsOut)
+                .message()
+                .body(">> HI")
+        );
+    }
+}
