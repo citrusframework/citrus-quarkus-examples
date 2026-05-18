@@ -9,6 +9,8 @@
   <packaging>pom</packaging>
 
   <modules>
+    <module>apache-camel/camel-direct</module>
+    <module>apache-camel/camel-direct-http</module>
     <module>apache-camel/camel-jms</module>
     <module>event-driven-jms</module>
     <module>event-driven-kafka</module>
