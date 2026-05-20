@@ -4,7 +4,7 @@
     <groupId>org.acme</groupId>
     <artifactId>camel-file-inbox</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <name>Citrus Quarkus Examples :: Apache Camel File</name>
+    <name>Citrus Quarkus Examples :: Camel :: File</name>
     <packaging>quarkus</packaging>
 
     <properties>

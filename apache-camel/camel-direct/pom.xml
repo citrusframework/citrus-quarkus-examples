@@ -4,7 +4,7 @@
     <groupId>org.acme</groupId>
     <artifactId>camel-direct</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <name>Citrus Quarkus Examples :: Apache Camel Direct</name>
+    <name>Citrus Quarkus Examples :: Camel :: Direct</name>
     <packaging>quarkus</packaging>
 
     <properties>

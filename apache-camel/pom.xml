@@ -3,14 +3,15 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.citrusframework.examples</groupId>
-  <artifactId>citrus-quarkus-examples</artifactId>
+  <artifactId>citrus-quarkus-camel-examples</artifactId>
   <version>1.0.0-SNAPSHOT</version>
-  <name>Citrus Quarkus Examples :: Parent</name>
+  <name>Citrus Quarkus Examples :: Camel</name>
   <packaging>pom</packaging>
 
   <modules>
-    <module>apache-camel</module>
-    <module>event-driven-jms</module>
-    <module>event-driven-kafka</module>
+    <module>camel-direct</module>
+    <module>camel-direct-http</module>
+    <module>camel-file-inbox</module>
+    <module>camel-jms</module>
   </modules>
 </project>
