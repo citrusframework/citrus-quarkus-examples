@@ -16,11 +16,13 @@ import org.junit.jupiter.api.Test;
 class EventDrivenApplicationTest implements TestActionSupport {
 
     @CitrusEndpoint
-    @KafkaEndpointConfig(topic = "words-in")
+    @KafkaEndpointConfig(topic = "words-in",
+            server = "${kafka.bootstrap.servers}")
     KafkaEndpoint wordsIn;
 
     @CitrusEndpoint
-    @KafkaEndpointConfig(topic = "words-out")
+    @KafkaEndpointConfig(topic = "words-out",
+            server = "${kafka.bootstrap.servers}")
     KafkaEndpoint wordsOut;
 
     @CitrusResource

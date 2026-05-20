@@ -12,7 +12,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <citrus.version>4.10.1</citrus.version>
+        <citrus.version>5.0.0-SNAPSHOT</citrus.version>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.version>3.35.3</quarkus.platform.version>
@@ -55,7 +55,7 @@
         </dependency>
         <dependency>
             <groupId>org.citrusframework</groupId>
-            <artifactId>citrus-junit5</artifactId>
+            <artifactId>citrus-junit-jupiter</artifactId>
             <version>${citrus.version}</version>
             <scope>test</scope>
         </dependency>
