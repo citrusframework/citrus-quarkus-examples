@@ -9,7 +9,7 @@ public class Routes extends EndpointRouteBuilder {
         from(file("inbox").delete(true))
             .unmarshal(dataFormat().zipFile().end())
             .convertBodyTo(String.class)
-            .split(simple("${body}"))
+            .split(body().tokenize(" "))
                 .setBody(exchange -> ">> " + exchange.getIn().getBody().toString().toUpperCase())
                 .to("kafka:words-out");
     }

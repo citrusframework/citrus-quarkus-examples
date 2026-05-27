@@ -9,6 +9,7 @@ import org.citrusframework.GherkinTestActionRunner;
 import org.citrusframework.TestActionSupport;
 import org.citrusframework.annotations.CitrusEndpoint;
 import org.citrusframework.annotations.CitrusResource;
+import org.citrusframework.camel.dsl.CamelSupport;
 import org.citrusframework.kafka.config.annotation.KafkaEndpointConfig;
 import org.citrusframework.kafka.endpoint.KafkaEndpoint;
 import org.citrusframework.quarkus.CitrusSupport;
@@ -34,11 +35,12 @@ class QuarkusApplicationTest extends CamelQuarkusTestSupport implements TestActi
     @Test
     void shouldConsumeFileContent() {
         runner.when(
-            send()
-                .endpoint("camel:file:inbox")
+            camel()
+                .send()
+                .endpoint(CamelSupport.camel().endpoints().file("inbox")::getRawUri)
                 .message()
                 .header("CamelFileName", "words.zip")
-                .body("Hello")
+                .body("Hello World")
                 .transform(processor().camel(camelContext)
                         .marshal()
                         .zipFile())
@@ -49,6 +51,13 @@ class QuarkusApplicationTest extends CamelQuarkusTestSupport implements TestActi
                 .endpoint(wordsOut)
                 .message()
                 .body(">> HELLO")
+        );
+
+        runner.then(
+            receive()
+                .endpoint(wordsOut)
+                .message()
+                .body(">> WORLD")
         );
     }
 }
