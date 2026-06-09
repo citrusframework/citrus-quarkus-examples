@@ -2,9 +2,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.citrusframework.quarkus.examples</groupId>
-    <artifactId>camel-file-inbox</artifactId>
+    <artifactId>camel-file-outbox</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <name>Citrus Quarkus Examples :: Camel :: File Inbox</name>
+    <name>Citrus Quarkus Examples :: Camel :: File Outbox</name>
     <packaging>quarkus</packaging>
 
     <properties>
@@ -12,7 +12,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <citrus.version>5.0.0-SNAPSHOT</citrus.version>
+        <citrus.version>5.0.0-M1</citrus.version>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.version>3.35.3</quarkus.platform.version>
@@ -87,12 +87,6 @@
         <dependency>
             <groupId>org.citrusframework</groupId>
             <artifactId>citrus-camel</artifactId>
-            <version>${citrus.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.citrusframework</groupId>
-            <artifactId>citrus-kafka</artifactId>
             <version>${citrus.version}</version>
             <scope>test</scope>
         </dependency>

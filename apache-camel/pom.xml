@@ -12,6 +12,7 @@
     <module>camel-direct</module>
     <module>camel-direct-http</module>
     <module>camel-file-inbox</module>
+    <module>camel-file-outbox</module>
     <module>camel-jms</module>
   </modules>
 </project>
