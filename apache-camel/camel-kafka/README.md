@@ -2,17 +2,46 @@
 
 This example demonstrates how to test Apache Camel routes in Quarkus applications using Citrus framework with Kafka integration. The project showcases a simple Camel route that transforms incoming Kafka messages to uppercase and publishes them to an output topic.
 
+## Why Citrus for Kafka Testing?
+
+**When Quarkus Kafka Dev Services Don't Apply:**
+
+Quarkus provides excellent Kafka Dev Services that automatically start a Kafka broker during development and testing. However, these dev services may not work for all Quarkus applications, particularly when:
+
+- Using Apache Camel's native Kafka component
+- Integrating with custom Kafka clients
+- Requiring specific Kafka versions or configurations
+- Testing legacy applications or specific integration patterns
+
+Citrus provides the `@KafkaContainerSupport` annotation - a simple, declarative way to provision Kafka broker infrastructure for your integration tests:
+
+```java
+@KafkaContainerSupport(port = 9092, version = "4.2.0")
+class QuarkusApplicationTest {
+    // Your Kafka broker is ready - that's it!
+}
+```
+
+**Benefits:**
+- ✅ Single annotation provides complete Kafka infrastructure
+- ✅ Works with any Kafka client or framework (Camel, Spring Kafka, native clients)
+- ✅ Automatic bootstrap server configuration shared across Quarkus, Camel, and test endpoints
+- ✅ Real Apache Kafka (via Testcontainers), not mocks
+- ✅ Customizable via container lifecycle listeners (topic creation, ACLs, etc.)
+- ✅ Automatic cleanup after test execution
+
 ## What You'll Learn
 
 By the end of this guide, you'll understand:
 
-- How to create Apache Camel routes in Quarkus for Kafka message processing
-- How to configure Citrus endpoints for testing Camel Kafka routes
-- How to write integration tests for Camel-based applications
-- How to share the Kafka bootstrap servers between Quarkus, Camel, and Citrus using `@BindToRegistry`
-- How to use Quarkus test resources to automatically provision a Kafka broker
-- The Gherkin-style test DSL (Given-When-Then) in Citrus for testing Camel routes
-- How Apache Camel simplifies integration patterns in Quarkus
+- **Citrus Testing for Kafka**: How to use Citrus framework to test Kafka-based integrations
+- **`@KafkaContainerSupport` Annotation**: How this single annotation provides complete Kafka broker infrastructure for testing
+- **Alternative to Dev Services**: When and why to use Citrus instead of Quarkus Kafka Dev Services
+- **Camel Route Testing**: How to configure Citrus endpoints for testing Apache Camel Kafka routes
+- **Automatic Configuration**: How Citrus automatically shares Kafka bootstrap servers between Quarkus, Camel, and test endpoints
+- **Container Lifecycle Management**: How to customize Kafka setup (topic creation, ACLs) using container lifecycle listeners
+- **Gherkin-Style Test DSL**: How to write readable Given-When-Then integration tests with Citrus
+- **Async Message Testing**: How to test asynchronous Camel routes with synchronous, deterministic tests
 
 ## The Application Under Test
 
@@ -49,18 +78,6 @@ public class Routes extends EndpointRouteBuilder {
    - Prefixes it with `">> "`
 3. **to(kafka("words-out"))**: Camel producer that sends the transformed message to the `words-out` Kafka topic
 
-### Why Apache Camel?
-
-Apache Camel provides:
-
-- **Concise Route Definition**: Complex integration flows in minimal code
-- **Rich Component Library**: 300+ connectors for various protocols and systems
-- **Enterprise Integration Patterns (EIP)**: Built-in implementations of proven patterns
-- **Routing & Mediation**: Message routing, transformation, and orchestration
-- **Testing Support**: Integration-friendly testing with Citrus
-
-In this example, the entire integration flow (consume → transform → produce) is expressed in just 3 lines of fluent API code, compared to the multi-class approach required with raw reactive messaging.
-
 ### Camel Kafka Component Configuration
 
 Quarkus automatically configures the Camel Kafka component to use the Kafka bootstrap servers. The `kafka:` prefix in the route definition (`from("kafka:words-in")`) references this pre-configured component, which:
@@ -76,7 +93,9 @@ The test class `QuarkusApplicationTest` demonstrates how to verify the end-to-en
 
 ### Test Setup: Kafka Container and Topic Creation
 
-The test uses Citrus Testcontainers support to provision a Kafka broker and create topics:
+The test uses Citrus Testcontainers support to provision a Kafka broker and create topics.
+
+**Important**: While Quarkus provides Kafka Dev Services for automatic Kafka broker provisioning, these dev services may not apply to all Quarkus applications (e.g., when using Apache Camel's Kafka component). In such cases, Citrus provides an alternative approach through the `@KafkaContainerSupport` annotation, which creates the required Kafka broker infrastructure for your integration tests with minimal configuration.
 
 ```java
 @KafkaContainerSupport(
@@ -103,6 +122,9 @@ class QuarkusApplicationTest implements TestActionSupport {
 **What's happening here:**
 
 - `@KafkaContainerSupport`: Citrus annotation that starts a Kafka testcontainer with the specified version
+  - **Alternative to Quarkus Kafka Dev Services**: When Quarkus Kafka Dev Services don't automatically apply to your application (e.g., when using Apache Camel's Kafka component directly), this annotation provides a simple, declarative way to provision a Kafka broker for testing
+  - **Minimal Configuration**: Just add the annotation with the desired Kafka version - no additional setup required
+  - **Automatic Cleanup**: The Kafka container is automatically stopped and cleaned up after test execution
 - `containerLifecycleListener`: Custom listener that runs after the container starts
 - `KafkaConfigurer`: Creates the required Kafka topics (`words-in` and `words-out`) before tests run
 - The Kafka bootstrap servers are automatically configured and shared between:
@@ -152,7 +174,10 @@ class QuarkusApplicationTest implements TestActionSupport {
 
 - `@QuarkusTest`: Starts the Quarkus application (including Camel routes) in test mode
 - `@CitrusSupport`: Enables Citrus framework integration with Quarkus
-- `@KafkaContainerSupport`: Automatically starts a Kafka testcontainer (version 4.2.0) for testing
+- `@KafkaContainerSupport`: **The key to Citrus-powered Kafka testing**
+  - Automatically starts a Kafka testcontainer (version 4.2.0) for testing
+  - **Use this when Quarkus Kafka Dev Services don't apply**: If your Quarkus application doesn't automatically benefit from Kafka Dev Services (e.g., when using Apache Camel, custom Kafka clients, or specific configurations), this annotation provides the Kafka infrastructure you need
+  - **Single-annotation simplicity**: No need to manually configure testcontainers, create test resources, or manage broker lifecycle
 - `containerLifecycleListener`: Specifies a custom listener to run after container startup (used to create topics)
 - No manual broker setup required
 - Automatic cleanup after test execution
@@ -196,17 +221,29 @@ The test validates:
 
 ## Key Testing Concepts
 
-### 1. Integration with Citrus Testcontainers Kafka Support
+### 1. Citrus Testcontainers Kafka Support
 
-The test uses Citrus's built-in Kafka testcontainer support via the `@KafkaContainerSupport` annotation:
+The test uses Citrus's built-in Kafka testcontainer support via the `@KafkaContainerSupport` annotation.
 
-This ensures:
-- No manual Kafka broker setup required
-- Tests run against a real Kafka broker (Apache Kafka 4.2.0 via Testcontainers)
-- Automatic topic creation via container lifecycle listener
-- Automatic cleanup after test execution
-- Isolation between test runs
-- Bootstrap servers automatically configured for Quarkus, Camel, and Citrus
+**Why use Citrus `@KafkaContainerSupport` instead of Quarkus Kafka Dev Services?**
+
+While Quarkus provides Kafka Dev Services that automatically start a Kafka broker during development and testing, these dev services may not work in all scenarios:
+
+- **Apache Camel Kafka Component**: When using Camel's native Kafka component, Quarkus Dev Services may not automatically configure the broker connection
+- **Custom Kafka Clients**: Applications using Kafka clients directly (not through Quarkus messaging) may require explicit broker configuration
+- **Test-specific Requirements**: Integration tests may need precise control over Kafka version, configuration, or lifecycle
+
+**Citrus `@KafkaContainerSupport` provides:**
+- **Universal Kafka Infrastructure**: Works with any Kafka client or integration framework (Apache Camel, Spring Kafka, native clients, etc.)
+- **Declarative Setup**: Single annotation creates a fully functional Kafka broker
+- **Version Control**: Specify exact Kafka version for your tests (e.g., `version = "4.2.0"`)
+- **Lifecycle Management**: Container lifecycle listeners for custom initialization (topic creation, ACL setup, etc.)
+- **Automatic Configuration**: Bootstrap servers automatically shared between Quarkus, Camel, and Citrus
+- **Real Kafka Broker**: Tests run against genuine Apache Kafka (via Testcontainers), not mocks
+- **Automatic Cleanup**: Container stopped and cleaned up after test execution
+- **Test Isolation**: Each test class can have its own Kafka instance if needed
+
+This makes `@KafkaContainerSupport` an ideal solution when Quarkus Kafka Dev Services don't apply to your application architecture.
 
 ### 2. Citrus Kafka Module
 
@@ -221,11 +258,13 @@ The `citrus-kafka` Maven dependency is added to the Maven POM:
 </dependency>
 ```
 
-This module adds:
-- Kafka endpoint implementations
-- Message producer and consumer capabilities
-- Kafka message header and property validation
-- Integration with Citrus test framework
+This module provides comprehensive Kafka testing capabilities:
+- **Kafka Endpoint Implementations**: Full-featured producer and consumer endpoints for Citrus tests
+- **Message Validation**: Validate message bodies, headers, keys, and Kafka-specific properties
+- **Testcontainer Integration**: The `@KafkaContainerSupport` annotation that eliminates manual broker setup
+- **Async Testing Support**: Wait for messages, timeouts, and retry logic for testing asynchronous Kafka flows
+- **Gherkin-Style DSL**: Readable Given-When-Then syntax for Kafka message flows
+- **Multi-Topic Testing**: Test complex scenarios involving multiple Kafka topics and partitions
 
 ### 3. Apache Camel Quarkus Dependencies
 
@@ -246,7 +285,7 @@ This provides:
 
 The `quarkus-camel-bom` in dependency management ensures compatible versions of all Camel Quarkus extensions.
 
-### 4. Container Lifecycle Listener
+### 4. Citrus Container Lifecycle Listener
 
 The test uses a custom container lifecycle listener to create Kafka topics:
 
@@ -292,7 +331,7 @@ The route uses Camel's type-safe Endpoint DSL:
 - Routes are started when the Quarkus application starts
 - In test mode, routes are fully functional and process real messages
 
-### 6. Kafka Configuration
+### 6. Kafka Configuration - Seamless Test and Production Setup
 
 The application configuration for production:
 
@@ -301,7 +340,16 @@ The application configuration for production:
 kafka.bootstrap.servers=localhost:9092
 ```
 
-The test configuration uses `@KafkaContainerSupport` which automatically configures the bootstrap servers to point to the test Kafka broker. No test-specific configuration is needed - the annotation handles everything.
+**Test Configuration**
+
+The `@KafkaContainerSupport` annotation automatically configures the bootstrap servers to point to the test Kafka broker. No test-specific `application.properties` overrides or test resources are needed - Citrus handles everything:
+
+- **Automatic Bootstrap Server Configuration**: The testcontainer's bootstrap servers are automatically injected into the Quarkus application context
+- **Framework-Agnostic**: Works seamlessly with Quarkus, Apache Camel, and any Kafka client library
+- **No Property Overrides Needed**: Unlike manual testcontainer setup, you don't need to override `kafka.bootstrap.servers` in test configuration
+- **Clean Separation**: Production and test configurations remain separate and clean
+
+This is particularly valuable when Quarkus Kafka Dev Services don't automatically apply - Citrus fills that gap with minimal configuration.
 
 ### 7. Synchronous Testing of Asynchronous Camel Routes
 
