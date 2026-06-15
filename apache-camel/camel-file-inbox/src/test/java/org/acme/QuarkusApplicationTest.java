@@ -39,7 +39,7 @@ class QuarkusApplicationTest extends CamelQuarkusTestSupport implements TestActi
                 .send()
                 .endpoint(CamelSupport.camel().endpoints().file("inbox")::getRawUri)
                 .message()
-                .header("CamelFileName", "words.zip")
+                .header("CamelFileName", "words")
                 .body("Hello World")
                 .transform(processor().camel(camelContext)
                         .marshal()
