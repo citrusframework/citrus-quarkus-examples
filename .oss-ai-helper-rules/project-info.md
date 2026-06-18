@@ -9,9 +9,7 @@ This file contains metadata about the Citrus Quarkus Examples project: where to 
 - **Issue ID format:** numeric (e.g., `#42`)
 - **SonarCloud component key:** _(none)_
 - **Documentation URL:** `https://github.com/citrusframework/citrus-quarkus-examples/blob/main/README.md`
-- **Related repositories:**
-  - `citrusframework/citrus` - Main Citrus framework repository
-  - `citrusframework/citrus-quarkus` - Citrus Quarkus integration
+- **Related repositories:** _(none)_
 - **Create-issue supported:** Yes
 
 ## Version
