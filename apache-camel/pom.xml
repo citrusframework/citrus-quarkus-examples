@@ -9,6 +9,7 @@
   <packaging>pom</packaging>
 
   <modules>
+    <module>camel-cxf-soap</module>
     <module>camel-direct</module>
     <module>camel-direct-http</module>
     <module>camel-file-inbox</module>
