@@ -15,5 +15,6 @@
     <module>camel-file-outbox</module>
     <module>camel-jms</module>
     <module>camel-kafka</module>
+    <module>camel-rest-dsl</module>
   </modules>
 </project>
