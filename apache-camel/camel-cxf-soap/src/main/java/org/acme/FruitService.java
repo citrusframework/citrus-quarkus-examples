@@ -8,20 +8,23 @@ import jakarta.jws.WebResult;
 import jakarta.jws.WebService;
 
 @WebService(
-        targetNamespace = "http://server.it.cxf.quarkiverse.io/",
-        name = "FruitService"
+        targetNamespace = FruitService.TARGET_NS,
+        name = "FruitService",
+        serviceName = "FruitService"
 )
 public interface FruitService {
 
-    @WebMethod
-    @WebResult(name = "return")
-    List<Fruit> addFruit(@WebParam(name = "fruit") Fruit fruit);
+    String TARGET_NS = "http://camel.apache.org/test/FruitService";
 
     @WebMethod
-    @WebResult(name = "return")
-    List<Fruit> deleteFruit(@WebParam(name = "fruit") Fruit fruit);
+    @WebResult(name = "fruits")
+    Fruits addFruit(@WebParam(name = "fruit") Fruit fruit);
 
     @WebMethod
-    @WebResult(name = "return")
-    List<Fruit> listFruits();
+    @WebResult(name = "fruits")
+    Fruits deleteFruit(@WebParam(name = "fruit") Fruit fruit) throws NoSuchFruitException;
+
+    @WebMethod
+    @WebResult(name = "fruits")
+    Fruits listFruits();
 }

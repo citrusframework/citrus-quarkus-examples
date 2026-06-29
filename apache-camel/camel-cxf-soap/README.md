@@ -8,9 +8,11 @@ By the end of this guide, you'll understand:
 
 - How to implement a SOAP WebService using the Apache Camel CXF component in Quarkus
 - How to define a WSDL-based service contract with document/literal style
-- How to route SOAP operations to business logic using Camel's content-based router
+- How to delegate SOAP operations to a POJO service bean using Camel's recipient list
+- How to handle SOAP faults with custom exceptions
 - How to use Citrus SOAP client to test WebService endpoints
 - How to validate XML response messages with Citrus
+- How to verify SOAP fault responses with Citrus
 - How to test multiple SOAP operations (addFruit, deleteFruit, listFruits)
 
 ## The Application Under Test
@@ -18,7 +20,7 @@ By the end of this guide, you'll understand:
 The Quarkus application uses the Apache Camel CXF SOAP component to expose a FruitService WebService:
 
 ```
-POST /soap/fruits  (SOAP)
+POST /cxf/services/fruits  (SOAP)
   - addFruit     -> Adds a fruit and returns the updated list
   - deleteFruit  -> Deletes a fruit and returns the updated list
   - listFruits   -> Returns the current list of all fruits
@@ -26,11 +28,12 @@ POST /soap/fruits  (SOAP)
 
 ### WSDL Contract
 
-The service contract is defined in `src/main/resources/wsdl/FruitService.wsdl` with the target namespace `http://server.it.cxf.quarkiverse.io/`. It defines:
+The service contract is defined in `src/main/resources/wsdl/FruitService.wsdl` with the target namespace `http://camel.apache.org/test/FruitService`. It defines:
 
 - **Fruit type**: An object with `name` and `description` string properties
-- **addFruit**: Accepts a `Fruit` parameter and returns a list of all fruits
-- **deleteFruit**: Accepts a `Fruit` parameter and returns the remaining fruits
+- **Fruits type**: A wrapper containing a list of `Fruit` elements
+- **addFruit**: Accepts a `Fruit` parameter and returns a `Fruits` list
+- **deleteFruit**: Accepts a `Fruit` parameter and returns the remaining `Fruits` (throws `NoSuchFruit` fault if not found)
 - **listFruits**: Returns all fruits in the service
 
 ### Service Endpoint Interface (SEI)
@@ -39,45 +42,56 @@ The `FruitService` interface defines the JAX-WS annotated service contract:
 
 ```java
 @WebService(
-        targetNamespace = "http://server.it.cxf.quarkiverse.io/",
-        name = "FruitService"
+        targetNamespace = "http://camel.apache.org/test/FruitService",
+        name = "FruitService",
+        serviceName = "FruitService"
 )
 public interface FruitService {
-    List<Fruit> addFruit(Fruit fruit);
-    List<Fruit> deleteFruit(Fruit fruit);
-    List<Fruit> listFruits();
+    Fruits addFruit(Fruit fruit);
+    Fruits deleteFruit(Fruit fruit) throws NoSuchFruitException;
+    Fruits listFruits();
+}
+```
+
+### POJO Service Implementation
+
+The `FruitServiceImpl` class implements the business logic as a CDI bean:
+
+```java
+@ApplicationScoped
+@Named("fruitService")
+public class FruitServiceImpl implements FruitService {
+    // In-memory store seeded with Apple and Orange
+    // addFruit/deleteFruit/listFruits operate on the store
+    // deleteFruit throws NoSuchFruitException for unknown fruits
 }
 ```
 
 ### Apache Camel CXF Route
 
-The `FruitServiceRoutes` class configures the CXF SOAP endpoint and routes operations:
+The `FruitServiceRoutes` class configures the CXF SOAP endpoint and routes operations to the POJO service bean:
 
 ```java
-from("cxf:/fruits?serviceClass=org.acme.FruitService&dataFormat=PAYLOAD")
-        .choice()
-            .when(header(CxfConstants.OPERATION_NAME).isEqualTo("addFruit"))
-                .process(/* extract fruit from XML, add to list, build XML response */)
-            .when(header(CxfConstants.OPERATION_NAME).isEqualTo("deleteFruit"))
-                .process(/* extract fruit from XML, remove from list, build XML response */)
-            .when(header(CxfConstants.OPERATION_NAME).isEqualTo("listFruits"))
-                .process(/* build XML response with all fruits */);
+from("cxf:bean:fruitEndpoint")
+        .recipientList(simple("bean:fruitService?method=${header.operationName}"));
 ```
 
 Key aspects:
-- **CXF endpoint** (`cxf:/fruits`) exposes the SOAP service under the CXF servlet path
-- **PAYLOAD data format** works with the SOAP body as XML DOM elements, giving full control over request/response XML
-- **Content-based routing** uses the `operationName` header to dispatch to the correct handler
+- **CXF bean endpoint** (`cxf:bean:fruitEndpoint`) references a `CxfEndpoint` CDI bean that configures the service class and address
+- **POJO data format** (default) automatically marshals/unmarshals between SOAP XML and Java objects via JAXB
+- **Recipient list** dynamically dispatches to the matching method on the `fruitService` bean using the `operationName` header
 
 ### Understanding the Architecture
 
-**1. CXF SOAP Component**: The Camel CXF component integrates Apache CXF with Camel routing. It handles SOAP envelope processing and endpoint management.
+**1. CXF SOAP Component**: The Camel CXF component integrates Apache CXF with Camel routing. It handles SOAP envelope processing, JAXB marshalling, and endpoint management.
 
-**2. PAYLOAD Data Format**: In PAYLOAD mode, the exchange body contains the SOAP body content as XML DOM elements. The route parses incoming XML to extract data and constructs XML response documents directly.
+**2. POJO Data Format**: In POJO mode (the default), CXF automatically converts between SOAP XML and Java objects. The route works with typed Java objects rather than raw XML DOM elements.
 
-**3. Operation Dispatching**: The `CxfConstants.OPERATION_NAME` header identifies which WSDL operation was invoked. The Camel `choice()` routes each operation to its handler.
+**3. Operation Dispatching**: The `operationName` header identifies which WSDL operation was invoked. The Camel `recipientList` uses a Simple expression to call the matching method on the service bean.
 
-**4. In-Memory Store**: Fruits are stored in a `LinkedList` seeded with Apple and Orange as initial data.
+**4. SOAP Fault Handling**: When `deleteFruit` is called with a fruit that doesn't exist, the service throws `NoSuchFruitException` (annotated with `@WebFault`), which CXF automatically translates into a SOAP fault response.
+
+**5. In-Memory Store**: Fruits are stored in a `LinkedList` seeded with Apple and Orange as initial data.
 
 ## Understanding the Citrus Test
 
@@ -91,7 +105,7 @@ The test class `FruitSoapServiceTest` demonstrates how to test Camel CXF SOAP en
 class FruitSoapServiceTest {
 
     @CitrusEndpoint
-    @WebServiceClientConfig(defaultUri = "http://localhost:8081/soap/fruits")
+    @WebServiceClientConfig(requestUrl = "http://localhost:8081/cxf/services/fruits")
     WebServiceClient soapClient;
 
     @CitrusResource
@@ -122,13 +136,16 @@ void shouldListFruits() {
                     .receive()
                     .message()
                     .body("<ns:listFruitsResponse xmlns:ns=\"...\">" +
-                            "<return>...</return>" +
-                            "</ns:listFruitsResponse>")
+                            "<fruits>" +
+                                "<fruit>...</fruit>" +
+                                "<fruit>...</fruit>" +
+                            "</fruits>" +
+                        "</ns:listFruitsResponse>")
     );
 }
 ```
 
-Sends a `listFruits` SOAP request and validates the response contains the initial fruits (Apple and Orange).
+Sends a `listFruits` SOAP request and validates the response contains the initial fruits (Apple and Orange) wrapped in a `<fruits>` element.
 
 ### Test: Add a Fruit
 
@@ -150,8 +167,10 @@ void shouldAddFruit() {
                     .receive()
                     .message()
                     .body("<ns:addFruitResponse xmlns:ns=\"...\">" +
-                            "<return>...</return>" +
-                            "</ns:addFruitResponse>")
+                            "<fruits>" +
+                                "<fruit>...</fruit>" +
+                            "</fruits>" +
+                        "</ns:addFruitResponse>")
     );
 }
 ```
@@ -178,13 +197,38 @@ void shouldDeleteFruit() {
                     .receive()
                     .message()
                     .body("<ns:deleteFruitResponse xmlns:ns=\"...\">" +
-                            "<return>...</return>" +
-                            "</ns:deleteFruitResponse>")
+                            "<fruits>" +
+                                "<fruit>...</fruit>" +
+                            "</fruits>" +
+                        "</ns:deleteFruitResponse>")
     );
 }
 ```
 
-Sends a `deleteFruit` SOAP request to remove Apple and validates the response contains only Orange.
+Sends a `deleteFruit` SOAP request to remove Apple and validates the response contains only Orange and Mango.
+
+### Test: SOAP Fault on Fruit Not Found
+
+```java
+@Test
+void shouldHandleFruitNotFound() {
+    runner.then(
+            soap().client(soapClient)
+                    .assertFault()
+                    .faultCode("{http://schemas.xmlsoap.org/soap/envelope/}Server")
+                    .faultString("Fruit \"Pineapple\" does not exist.")
+                    .when(soap().client(soapClient)
+                            .send()
+                            .message()
+                            .soapAction("")
+                            .body("<ns:deleteFruit xmlns:ns=\"...\">" +
+                                    "<fruit>...</fruit>" +
+                                "</ns:deleteFruit>"))
+    );
+}
+```
+
+Attempts to delete a non-existent fruit (Pineapple) and validates that the service returns a SOAP fault with the expected fault code and message.
 
 ## Key Testing Concepts
 
@@ -194,7 +238,7 @@ Citrus provides a fluent DSL for SOAP client operations:
 
 ```java
 @CitrusEndpoint
-@WebServiceClientConfig(defaultUri = "http://localhost:8081/soap/fruits")
+@WebServiceClientConfig(requestUrl = "http://localhost:8081/cxf/services/fruits")
 WebServiceClient soapClient;
 ```
 
@@ -204,11 +248,23 @@ The client handles SOAP envelope wrapping/unwrapping automatically. You provide 
 
 With the `citrus-validation-xml` dependency, Citrus validates XML responses structurally. The validation ensures that the SOAP response body matches the expected XML content.
 
-### 3. SOAP Action
+### 3. SOAP Fault Validation
+
+Citrus provides `assertFault()` to verify SOAP fault responses. It wraps a send action and asserts that the response is a SOAP fault with expected fault code and fault string:
+
+```java
+soap().client(soapClient)
+        .assertFault()
+        .faultCode("{http://schemas.xmlsoap.org/soap/envelope/}Server")
+        .faultString("Fruit \"Pineapple\" does not exist.")
+        .when(soap().client(soapClient).send()...);
+```
+
+### 4. SOAP Action
 
 Each test specifies a `soapAction("")` matching the WSDL binding. The SOAP action is sent as an HTTP header to identify the operation.
 
-### 4. Test Annotations
+### 5. Test Annotations
 
 - `@QuarkusTest`: Starts the application in test mode on port 8081
 - `@CitrusSupport`: Activates Citrus integration with the Quarkus test lifecycle
@@ -232,7 +288,7 @@ mvn verify
 
 **Expected output:**
 ```
-[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 As the Citrus test class is an arbitrary JUnit Jupiter test you may also run the test directly from your favorite Java IDE (e.g. Eclipse or IntelliJ).
@@ -240,6 +296,7 @@ As the Citrus test class is an arbitrary JUnit Jupiter test you may also run the
 ### Key Dependencies (pom.xml)
 
 - **camel-quarkus-core**: Apache Camel core functionality for Quarkus
+- **camel-quarkus-bean**: Apache Camel Bean component for invoking POJO service methods
 - **camel-quarkus-cxf-soap**: Apache Camel CXF SOAP component for Quarkus
 - **citrus-quarkus**: Integrates Citrus with Quarkus test framework
 - **citrus-ws**: Adds SOAP WebService client/server support to Citrus

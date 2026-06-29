@@ -21,10 +21,10 @@ import org.springframework.ws.soap.saaj.SaajSoapMessageFactory;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class FruitSoapServiceTest implements TestActionSupport {
 
-    private static final String FRUIT_NS = "http://server.it.cxf.quarkiverse.io/";
+    private static final String TARGET_NS = "http://camel.apache.org/test/FruitService";
 
     @CitrusEndpoint
-    @WebServiceClientConfig(requestUrl = "http://localhost:8081/soap/fruits")
+    @WebServiceClientConfig(requestUrl = "http://localhost:8081/cxf/services/fruits")
     WebServiceClient soapClient;
 
     @CitrusResource
@@ -41,7 +41,7 @@ public class FruitSoapServiceTest implements TestActionSupport {
     @Order(1)
     void shouldListFruits() {
         runner.given(createVariables()
-                .variable("targetNS", FRUIT_NS));
+                .variable("targetNS", TARGET_NS));
 
         runner.when(
                 soap().client(soapClient)
@@ -56,8 +56,10 @@ public class FruitSoapServiceTest implements TestActionSupport {
                         .receive()
                         .message()
                         .body("<ns:listFruitsResponse xmlns:ns=\"${targetNS}\">" +
-                                "<return><description>Winter fruit</description><name>Apple</name></return>" +
-                                "<return><description>Citrus fruit</description><name>Orange</name></return>" +
+                                "<fruits>" +
+                                    "<fruit><description>Winter fruit</description><name>Apple</name></fruit>" +
+                                    "<fruit><description>Citrus fruit</description><name>Orange</name></fruit>" +
+                                "</fruits>" +
                             "</ns:listFruitsResponse>")
         );
     }
@@ -66,7 +68,7 @@ public class FruitSoapServiceTest implements TestActionSupport {
     @Order(2)
     void shouldAddFruit() {
         runner.given(createVariables()
-                .variable("targetNS", FRUIT_NS));
+                .variable("targetNS", TARGET_NS));
 
         runner.when(
                 soap().client(soapClient)
@@ -83,9 +85,11 @@ public class FruitSoapServiceTest implements TestActionSupport {
                         .receive()
                         .message()
                         .body("<ns:addFruitResponse xmlns:ns=\"${targetNS}\">" +
-                                "<return><description>Winter fruit</description><name>Apple</name></return>" +
-                                "<return><description>Citrus fruit</description><name>Orange</name></return>" +
-                                "<return><description>Tropical fruit</description><name>Mango</name></return>" +
+                                "<fruits>" +
+                                    "<fruit><description>Winter fruit</description><name>Apple</name></fruit>" +
+                                    "<fruit><description>Citrus fruit</description><name>Orange</name></fruit>" +
+                                    "<fruit><description>Tropical fruit</description><name>Mango</name></fruit>" +
+                                "</fruits>" +
                             "</ns:addFruitResponse>")
         );
     }
@@ -94,7 +98,7 @@ public class FruitSoapServiceTest implements TestActionSupport {
     @Order(3)
     void shouldDeleteFruit() {
         runner.given(createVariables()
-                .variable("targetNS", FRUIT_NS));
+                .variable("targetNS", TARGET_NS));
 
         runner.when(
                 soap().client(soapClient)
@@ -111,9 +115,32 @@ public class FruitSoapServiceTest implements TestActionSupport {
                         .receive()
                         .message()
                         .body("<ns:deleteFruitResponse xmlns:ns=\"${targetNS}\">" +
-                                "<return><description>Citrus fruit</description><name>Orange</name></return>" +
-                                "<return><description>Tropical fruit</description><name>Mango</name></return>" +
+                                "<fruits>" +
+                                    "<fruit><description>Citrus fruit</description><name>Orange</name></fruit>" +
+                                    "<fruit><description>Tropical fruit</description><name>Mango</name></fruit>" +
+                                "</fruits>" +
                             "</ns:deleteFruitResponse>")
+        );
+    }
+
+    @Test
+    @Order(4)
+    void shouldHandleFruitNotFound() {
+        runner.given(createVariables()
+                .variable("targetNS", TARGET_NS));
+
+        runner.then(
+                soap().client(soapClient)
+                        .assertFault()
+                        .faultCode("{http://schemas.xmlsoap.org/soap/envelope/}Server")
+                        .faultString("Fruit \"Pineapple\" does not exist.")
+                        .when(soap().client(soapClient)
+                                .send()
+                                .message()
+                                .soapAction("")
+                                .body("<ns:deleteFruit xmlns:ns=\"${targetNS}\">" +
+                                        "<fruit><description>Tropical fruit</description><name>Pineapple</name></fruit>" +
+                                    "</ns:deleteFruit>"))
         );
     }
 }

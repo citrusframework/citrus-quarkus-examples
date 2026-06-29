@@ -4,9 +4,12 @@ import jakarta.xml.bind.annotation.XmlAccessType;
 import jakarta.xml.bind.annotation.XmlAccessorType;
 import jakarta.xml.bind.annotation.XmlType;
 
-@XmlType(name = "Fruit", namespace = "http://server.it.cxf.quarkiverse.io/",
-        propOrder = {"description", "name"})
 @XmlAccessorType(XmlAccessType.FIELD)
+@XmlType(name = "Fruit",
+        propOrder = {
+            "description",
+            "name"
+})
 public class Fruit {
 
     private String description;

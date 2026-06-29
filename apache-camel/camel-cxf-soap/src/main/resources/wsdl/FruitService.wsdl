@@ -1,72 +1,84 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <wsdl:definitions xmlns:xsd="http://www.w3.org/2001/XMLSchema"
   name="FruitService"
-  xmlns:tns="http://server.it.cxf.quarkiverse.io/"
+  xmlns:tns="http://camel.apache.org/test/FruitService"
   xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
   xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
-  targetNamespace="http://server.it.cxf.quarkiverse.io/">
+  targetNamespace="http://camel.apache.org/test/FruitService">
   <wsdl:types>
     <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-      xmlns:tns="http://server.it.cxf.quarkiverse.io/" elementFormDefault="unqualified"
-      targetNamespace="http://server.it.cxf.quarkiverse.io/" version="1.0">
+      xmlns:tns="http://camel.apache.org/test/FruitService" elementFormDefault="unqualified"
+      targetNamespace="http://camel.apache.org/test/FruitService" version="1.0">
 
       <xs:element name="addFruit" type="tns:addFruit" />
-
       <xs:element name="addFruitResponse" type="tns:addFruitResponse" />
-
       <xs:element name="deleteFruit" type="tns:deleteFruit" />
-
       <xs:element name="deleteFruitResponse" type="tns:deleteFruitResponse" />
-
       <xs:element name="fruit" type="tns:Fruit" />
-
       <xs:element name="listFruits" type="tns:listFruits" />
-
       <xs:element name="listFruitsResponse" type="tns:listFruitsResponse" />
+      <xs:element name="NoSuchFruit" type="tns:NoSuchFruit"/>
 
       <xs:complexType name="addFruit">
         <xs:sequence>
           <xs:element minOccurs="0" name="fruit" type="tns:Fruit" />
         </xs:sequence>
       </xs:complexType>
-
       <xs:complexType name="Fruit">
         <xs:sequence>
           <xs:element minOccurs="0" name="description" type="xs:string" />
           <xs:element minOccurs="0" name="name" type="xs:string" />
         </xs:sequence>
       </xs:complexType>
-
       <xs:complexType name="addFruitResponse">
         <xs:sequence>
-          <xs:element maxOccurs="unbounded" minOccurs="0" name="return" type="tns:Fruit" />
+          <xs:element name="fruits">
+            <xs:complexType>
+              <xsd:sequence>
+                <xs:element maxOccurs="unbounded" minOccurs="0" name="fruit" type="tns:Fruit" />
+              </xsd:sequence>
+            </xs:complexType>
+          </xs:element>
         </xs:sequence>
       </xs:complexType>
-
       <xs:complexType name="deleteFruit">
         <xs:sequence>
           <xs:element minOccurs="0" name="fruit" type="tns:Fruit" />
         </xs:sequence>
       </xs:complexType>
-
       <xs:complexType name="deleteFruitResponse">
         <xs:sequence>
-          <xs:element maxOccurs="unbounded" minOccurs="0" name="return" type="tns:Fruit" />
+          <xs:element name="fruits">
+            <xs:complexType>
+              <xsd:sequence>
+                <xs:element maxOccurs="unbounded" minOccurs="0" name="fruit" type="tns:Fruit" />
+              </xsd:sequence>
+            </xs:complexType>
+          </xs:element>
         </xs:sequence>
       </xs:complexType>
-
       <xs:complexType name="listFruits">
         <xs:sequence />
       </xs:complexType>
-
       <xs:complexType name="listFruitsResponse">
         <xs:sequence>
-          <xs:element maxOccurs="unbounded" minOccurs="0" name="return" type="tns:Fruit" />
+          <xs:element name="fruits">
+            <xs:complexType>
+              <xsd:sequence>
+                <xs:element maxOccurs="unbounded" minOccurs="0" name="fruit" type="tns:Fruit" />
+              </xsd:sequence>
+            </xs:complexType>
+          </xs:element>
         </xs:sequence>
       </xs:complexType>
-
+      <xs:complexType name="NoSuchFruit">
+        <xs:sequence>
+          <xs:element name="fruit" nillable="true" type="xs:string"/>
+        </xs:sequence>
+      </xs:complexType>
     </xs:schema>
   </wsdl:types>
+
   <wsdl:message name="addFruit">
     <wsdl:part element="tns:addFruit" name="parameters">
     </wsdl:part>
@@ -91,24 +103,22 @@
     <wsdl:part element="tns:listFruitsResponse" name="parameters">
     </wsdl:part>
   </wsdl:message>
+  <wsdl:message name="NoSuchFruitException">
+    <wsdl:part name="NoSuchFruitException" element="tns:NoSuchFruit"/>
+  </wsdl:message>
   <wsdl:portType name="FruitService">
     <wsdl:operation name="addFruit">
-      <wsdl:input message="tns:addFruit" name="addFruit">
-      </wsdl:input>
-      <wsdl:output message="tns:addFruitResponse" name="addFruitResponse">
-      </wsdl:output>
+      <wsdl:input message="tns:addFruit" name="addFruit"/>
+      <wsdl:output message="tns:addFruitResponse" name="addFruitResponse"/>
     </wsdl:operation>
     <wsdl:operation name="deleteFruit">
-      <wsdl:input message="tns:deleteFruit" name="deleteFruit">
-      </wsdl:input>
-      <wsdl:output message="tns:deleteFruitResponse" name="deleteFruitResponse">
-      </wsdl:output>
+      <wsdl:input message="tns:deleteFruit" name="deleteFruit"/>
+      <wsdl:output message="tns:deleteFruitResponse" name="deleteFruitResponse"/>
+      <wsdl:fault name="NoSuchFruitException" message="tns:NoSuchFruitException"/>
     </wsdl:operation>
     <wsdl:operation name="listFruits">
-      <wsdl:input message="tns:listFruits" name="listFruits">
-      </wsdl:input>
-      <wsdl:output message="tns:listFruitsResponse" name="listFruitsResponse">
-      </wsdl:output>
+      <wsdl:input message="tns:listFruits" name="listFruits"/>
+      <wsdl:output message="tns:listFruitsResponse" name="listFruitsResponse"/>
     </wsdl:operation>
   </wsdl:portType>
   <wsdl:binding name="FruitServiceSoapBinding" type="tns:FruitService">
@@ -144,7 +154,7 @@
   <wsdl:service name="FruitService">
     <wsdl:port binding="tns:FruitServiceSoapBinding" name="FruitServiceImplPort">
       <soap:address
-        location="http://localhost:8080/soap/fruits" />
+        location="http://localhost:8080/cxf/services/fruits" />
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>
