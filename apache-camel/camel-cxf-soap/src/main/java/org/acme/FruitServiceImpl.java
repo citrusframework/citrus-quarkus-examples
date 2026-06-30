@@ -1,28 +1,46 @@
 package org.acme;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
+import org.apache.camel.test.fruitservice.AddFruitResponse;
+import org.apache.camel.test.fruitservice.DeleteFruitResponse;
+import org.apache.camel.test.fruitservice.Fruit;
+import org.apache.camel.test.fruitservice.FruitService;
+import org.apache.camel.test.fruitservice.ListFruitsResponse;
+import org.apache.camel.test.fruitservice.NoSuchFruitException;
 
 @ApplicationScoped
 @Named("fruitService")
 public class FruitServiceImpl implements FruitService {
 
-    private final List<Fruit> fruits = new LinkedList<>(List.of(
-            new Fruit("Apple", "Winter fruit"),
-            new Fruit("Orange", "Citrus fruit")
-    ));
+    private final List<Fruit> fruits = new ArrayList<>();
 
-    @Override
-    public Fruits addFruit(Fruit fruit) {
-        fruits.add(fruit);
-        return new Fruits(fruits);
+    public FruitServiceImpl() {
+        Fruit apple = new Fruit();
+        apple.setName("Apple");
+        apple.setDescription("Winter fruit");
+        fruits.add(apple);
+
+        Fruit orange = new Fruit();
+        orange.setName("Orange");
+        orange.setDescription("Citrus fruit");
+        fruits.add(orange);
     }
 
     @Override
-    public Fruits deleteFruit(Fruit fruit) throws NoSuchFruitException {
+    public AddFruitResponse.Fruits addFruit(Fruit fruit) {
+        fruits.add(fruit);
+
+        AddFruitResponse.Fruits response = new AddFruitResponse.Fruits();
+        response.getFruit().addAll(fruits);
+        return response;
+    }
+
+    @Override
+    public DeleteFruitResponse.Fruits deleteFruit(Fruit fruit) throws NoSuchFruitException {
         int index = -1;
         for (int i = 0; i < fruits.size(); i++) {
             if (fruits.get(i).getName().equals(fruit.getName())) {
@@ -32,15 +50,20 @@ public class FruitServiceImpl implements FruitService {
         }
 
         if (index == -1) {
-            throw new NoSuchFruitException(fruit.getName());
+            throw new NoSuchFruitException("Fruit \"" + fruit.getName() + "\" does not exist.");
         }
 
         fruits.remove(index);
-        return new Fruits(fruits);
+
+        DeleteFruitResponse.Fruits response = new DeleteFruitResponse.Fruits();
+        response.getFruit().addAll(fruits);
+        return response;
     }
 
     @Override
-    public Fruits listFruits() {
-        return new Fruits(fruits);
+    public ListFruitsResponse.Fruits listFruits() {
+        ListFruitsResponse.Fruits response = new ListFruitsResponse.Fruits();
+        response.getFruit().addAll(fruits);
+        return response;
     }
 }
