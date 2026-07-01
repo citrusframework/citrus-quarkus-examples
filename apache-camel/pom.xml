@@ -18,6 +18,7 @@
     <module>camel-jms</module>
     <module>camel-kafka</module>
     <module>camel-openapi-server</module>
+    <module>camel-postgresql</module>
     <module>camel-rest-dsl</module>
     <module>camel-rest-to-soap</module>
   </modules>
