@@ -17,6 +17,7 @@
     <module>camel-file-outbox</module>
     <module>camel-jms</module>
     <module>camel-kafka</module>
+    <module>camel-mqtt</module>
     <module>camel-openapi-server</module>
     <module>camel-postgresql</module>
     <module>camel-rest-dsl</module>
