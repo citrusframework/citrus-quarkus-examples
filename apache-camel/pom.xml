@@ -9,6 +9,7 @@
   <packaging>pom</packaging>
 
   <modules>
+    <module>camel-aws-s3-kafka</module>
     <module>camel-cxf-soap</module>
     <module>camel-cxf-soap-client</module>
     <module>camel-direct</module>
