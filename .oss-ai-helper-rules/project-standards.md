@@ -1,23 +1,19 @@
 # Project Standards
 
-This file documents the build tools, commands, and code conventions used by the Citrus Quarkus Examples project.
+This rule file contains build tools, commands, and code style constraints for the project. Commands read this file to determine how to build, test, and format code.
 
 - **Build tool:** Maven
 - **Build command:** `mvn verify`
 - **Test command:** `mvn test`
 - **Test with coverage command:** `mvn verify`
-- **Format command:** `mvn process-sources -Pformat`
-- **Module-specific build:** yes (multi-module Maven project)
-- **Parallelized Maven:** no
+- **Format command:** `cd <module> && mvn -DskipTests install`
+- **Module-specific build:** yes (always run `mvn` in the module directory where changes occurred)
+- **Parallelized Maven:** no (resource intensive, do NOT parallelize Maven jobs)
 - **Code style restrictions:**
   - Do NOT use Lombok (unless already present in the file)
-  - Records are allowed for internal/non-API classes; do NOT convert existing public API classes to Records
   - Do NOT change public API signatures without justification
   - Do NOT add new dependencies without justification
+  - Records are allowed for internal/non-API classes; do NOT convert existing public API classes to Records
   - Follow standard Java code conventions
-  - Use Maven code formatting profile if available
   - Maintain backwards compatibility for public APIs
   - Maintain consistency with existing code style in the project
-
-## Version
-941f5393a52f28ce7c8beb19c406c3b270d03342
