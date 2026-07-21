@@ -1,19 +1,13 @@
 {
-  "services": [
+  "resources": [
     {
-      "type": "event",
       "name": "default",
-      "url": "{{k.sink}}",
+      "type": "event",
       "endpointKind": "sink",
+      "url": "{{k.sink:http://localhost:8080}}",
       "objectApiVersion": "eventing.knative.dev/v1",
       "objectKind": "Broker",
-      "objectName": "default",
-      "metadata": {
-        "camel.endpoint.kind": "sink",
-        "knative.apiVersion": "eventing.knative.dev/v1",
-        "knative.kind": "Broker",
-        "knative.name": "default"
-      }
+      "objectName": "default"
     }
   ]
 }

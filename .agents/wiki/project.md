@@ -100,16 +100,18 @@ Petstore API **client** built with the `camel-quarkus-rest-openapi` component. T
 Key patterns introduced: `@CitrusConfiguration` shared endpoint config, `AfterSuite` server teardown, `camel().send().fork(true)` for deadlock-safe Camel route triggering, Quarkus `%test.` profile override for the service URL.
 
 ### camel-knative
-Timer-driven Camel route that produces CloudEvents to a Knative eventing broker (`kamelet:timer-source` → `transformDataType("http:application-cloudevents")` → `knative:event/…`). Demonstrates Citrus Knative eventing tests without any Kubernetes cluster.
+Camel Knative event source that consumes objects from S3 via `kamelet:aws-s3-source`, transforms them to CloudEvents, and delivers them to a Knative broker. Demonstrates Citrus Knative eventing tests locally without Kubernetes by combining a Citrus local broker with LocalStack-backed S3.
 
 Key patterns:
-- **`KnativeTestActionSupport`** — mixin interface that provides the `knative()` fluent DSL in Citrus tests.
-- **`ClusterType.LOCAL`** — passed on `knative().brokers().create("default").clusterType(ClusterType.LOCAL)`. Citrus starts a local Jetty HTTP server (port 8080) as the broker instead of calling the Kubernetes API.
-- **CloudEvent validation** — `knative().event().receive()` with `.attribute("ce-type", …)`, `.attribute("ce-source", …)`, `.attribute("ce-id", "@notNull()@")`, and `.eventData(…)`.
-- **`transformDataType("http:application-cloudevents")`** — required in the Camel route to set `ce-source=org.apache.camel`; without it the source defaults to the Camel route ID.
-- **`classpath:knative.json`** — use `classpath:` (not `file:`) for `camel.component.knative.environment-path` so the config resolves from the JAR in both tests and production.
-- **`k.sink` property** — `knative.json` uses `{{k.sink}}` as the broker URL placeholder. The test profile sets `k.sink=http://localhost:8080`. In a real Kubernetes deployment the Knative operator injects `K_SINK` via a SinkBinding.
-- **Extra dependencies needed for kamelets**: `camel-kamelets` (YAML definitions) and `camel-quarkus-yaml-dsl` (YAML DSL loader) must both be on the classpath; `camel-quarkus-kamelet` alone is not sufficient.
+- **`ClusterType.LOCAL`** — used with `knative().brokers().create("default").clusterType(ClusterType.LOCAL)` so Citrus starts a local HTTP broker instead of calling the Kubernetes API.
+- **LocalStack-backed S3 testing** — `@LocalStackContainerSupport(services = AwsService.S3, containerLifecycleListener = QuarkusApplicationTest.class)` starts S3 for the test and injects dynamic Camel Kamelet connection properties through `ContainerLifecycleListener<LocalStackContainer>`.
+- **S3-triggered event flow** — the test uploads an object to a LocalStack bucket, Camel consumes it through `kamelet:aws-s3-source`, and the route forwards it as a CloudEvent to Knative.
+- **CloudEvent overrides** — `camel.component.knative.ceOverride[...]` sets `ce-type=dev.knative.eventing.aws-s3`, `ce-source=dev.knative.eventing.aws-s3-source`, and `ce-subject=aws-s3-source` so the emitted event matches Knative AWS S3 source conventions.
+- **CloudEvent validation** — `knative().event().receive()` validates the payload and attributes including `ce-id`, `ce-type`, `ce-source`, and `ce-subject`.
+- **`transformDataType("http:application-cloudevents")`** — still required so Camel emits a proper CloudEvent HTTP message before sending to the Knative endpoint.
+- **`classpath:knative.json`** — use `classpath:` for `camel.component.knative.environment-path`; the file now defines the broker under `resources` and uses `{{k.sink:http://localhost:8080}}` as a defaultable sink URL.
+- **SinkBinding alignment** — the module includes a sample `src/main/kubernetes/kubernetes.yml` with a `Deployment` and `SinkBinding`, mirroring how a real Knative environment injects `K_SINK`.
+- **Extra dependencies needed for kamelets**: `camel-kamelets` and `camel-quarkus-yaml-dsl` are still required alongside `camel-quarkus-kamelet`.
 
 ### apache-camel (sub-modules)
 A growing set of examples each targeting a specific Apache Camel + Quarkus routing pattern and the corresponding Citrus test setup. Protocols covered include HTTP REST, SOAP/CXF, JMS, Kafka, Knative/CloudEvents, MQTT, file I/O, PostgreSQL, AWS S3, and OpenAPI (server and client).

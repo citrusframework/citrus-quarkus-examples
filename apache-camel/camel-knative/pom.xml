@@ -46,6 +46,10 @@
             <artifactId>camel-quarkus-knative-producer</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.apache.camel.quarkus</groupId>
+            <artifactId>camel-quarkus-aws2-s3</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.apache.camel.kamelets</groupId>
             <artifactId>camel-kamelets</artifactId>
         </dependency>
@@ -91,6 +95,12 @@
         <dependency>
             <groupId>org.citrusframework</groupId>
             <artifactId>citrus-http</artifactId>
+            <version>${citrus.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.citrusframework</groupId>
+            <artifactId>citrus-testcontainers</artifactId>
             <version>${citrus.version}</version>
             <scope>test</scope>
         </dependency>

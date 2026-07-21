@@ -1,22 +1,22 @@
 # Apache Camel Knative Eventing with Citrus
 
-This example demonstrates how to test an Apache Camel route that produces CloudEvents to a Knative eventing broker, running entirely on a local machine — no Kubernetes cluster required.
+This example demonstrates how to test an Apache Camel Knative event source that turns Amazon S3 uploads into CloudEvents and sends them to a Knative broker, running locally with Citrus and LocalStack.
 
 ## What You'll Learn
 
 By the end of this guide, you'll understand:
 
-- **Citrus local Knative broker**: How Citrus starts a lightweight HTTP server that acts as a Knative broker, making Knative eventing tests possible without any Kubernetes infrastructure
-- **CloudEvent verification**: How to assert CloudEvent headers (`ce-id`, `ce-type`, `ce-source`) and event data with Citrus
-- **Camel Knative integration**: How the Camel Knative producer component formats and sends CloudEvents
-- **`ClusterType.LOCAL`**: The Citrus concept that switches Knative operations from Kubernetes API calls to local HTTP server management
+- **Local Knative broker testing**: How Citrus starts a lightweight local Knative broker so you can verify Knative event delivery without a Kubernetes cluster
+- **S3 event simulation**: How LocalStack provides an S3-compatible service for exercising the Camel `aws-s3-source` Kamelet in tests
+- **CloudEvent verification**: How to assert Knative CloudEvent attributes such as `ce-id`, `ce-type`, `ce-source`, and `ce-subject`
+- **SinkBinding-style configuration**: How Camel Knative reads `knative.json` and resolves the broker sink URL from the `k.sink` property
 
 ## The Application Under Test
 
-The Quarkus application uses Apache Camel to produce CloudEvents on a timer and send them to a Knative broker:
+The Quarkus application uses Apache Camel to consume objects from an S3 bucket and publish them as CloudEvents to a Knative broker:
 
 ```
-Timer (kamelet:timer-source) → CloudEvent transform → Knative broker (HTTP POST)
+Amazon S3 upload → Camel aws-s3-source Kamelet → CloudEvent transform → Knative broker
 ```
 
 ### Apache Camel Route
@@ -24,35 +24,40 @@ Timer (kamelet:timer-source) → CloudEvent transform → Knative broker (HTTP P
 The route is defined in [`Routes.java`](src/main/java/org/acme/Routes.java):
 
 ```java
-from("kamelet:timer-source?period=5000&message={{timer.message:Hello Knative!}}")
+from("kamelet:aws-s3-source")
         .transformDataType(new DataType("http:application-cloudevents"))
         .to("knative:event/org.apache.camel.event.messages?kind=Broker&name=default");
 ```
 
 **Route breakdown:**
 
-1. **`kamelet:timer-source`**: Fires a message every 5 seconds. The message body is configurable via the `timer.message` property.
-2. **`transformDataType("http:application-cloudevents")`**: Transforms the exchange into a proper CloudEvent, setting the mandatory CloudEvent attributes (`ce-type`, `ce-source`, `ce-specversion`) from Camel's routing metadata.
-3. **`knative:event/org.apache.camel.event.messages`**: Sends the CloudEvent as an HTTP POST to the configured Knative broker. The event type `org.apache.camel.event.messages` becomes the `ce-type` header.
+1. **`kamelet:aws-s3-source`**: Polls an S3 bucket using the Camel AWS S3 source Kamelet.
+2. **`transformDataType("http:application-cloudevents")`**: Converts the exchange into a CloudEvent HTTP message.
+3. **`knative:event/...`**: Sends the CloudEvent to the Knative broker named `default`.
 
 ### Camel Knative Configuration
 
-The Camel Knative component reads a JSON environment file that describes the Knative services. This is configured in [`application.properties`](src/main/resources/application.properties):
+The Camel Knative component reads a JSON environment file configured in [`application.properties`](src/main/resources/application.properties):
 
 ```properties
 camel.component.knative.environment-path=classpath:knative.json
+camel.component.knative.ceOverride[ce-type]=dev.knative.eventing.aws-s3
+camel.component.knative.ceOverride[ce-source]=dev.knative.eventing.aws-s3-source
+camel.component.knative.ceOverride[ce-subject]=aws-s3-source
 ```
 
-The [`knative.json`](src/main/resources/knative.json) file describes the broker sink, using `{{k.sink}}` as a placeholder for the broker URL:
+These `ceOverride` settings make the produced event look like a Knative AWS S3 source event by explicitly setting the CloudEvent metadata.
+
+The [`knative.json`](src/main/resources/knative.json) file defines the broker sink:
 
 ```json
 {
-  "services": [
+  "resources": [
     {
-      "type": "event",
       "name": "default",
-      "url": "{{k.sink}}",
+      "type": "event",
       "endpointKind": "sink",
+      "url": "{{k.sink:http://localhost:8080}}",
       "objectApiVersion": "eventing.knative.dev/v1",
       "objectKind": "Broker",
       "objectName": "default"
@@ -61,29 +66,36 @@ The [`knative.json`](src/main/resources/knative.json) file describes the broker 
 }
 ```
 
-The `{{k.sink}}` placeholder follows the Knative [Sink Binding](https://knative.dev/docs/eventing/custom-event-source/sinkbinding/) convention — the broker URL is injected via the `k.sink` property. In the test profile ([`src/test/resources/application.properties`](src/test/resources/application.properties)), this is set to the Citrus local broker:
+The broker URL is resolved from `k.sink`, defaulting to `http://localhost:8080`. In tests, [`application.properties`](src/main/resources/application.properties) sets `%test.k.sink=http://localhost:8080` so Camel sends events to the Citrus local broker.
 
-```properties
-k.sink=http://localhost:8080
-```
+### Knative Deployment Descriptor
 
-In a real Kubernetes deployment, the Knative operator would inject `K_SINK` automatically via a SinkBinding resource.
+The module now also includes a sample Knative deployment descriptor in [`kubernetes.yml`](src/main/kubernetes/kubernetes.yml). It contains:
+
+- a `Deployment` named `aws-s3-source`
+- a `SinkBinding` that injects the `default` broker sink into that deployment
+
+This mirrors how a real Knative environment would provide the sink URL to the event source.
 
 ## Understanding the Citrus Test
 
-The test class [`QuarkusApplicationTest`](src/test/java/org/acme/QuarkusApplicationTest.java) demonstrates how to verify CloudEvents end-to-end without a Kubernetes cluster.
+The test class [`QuarkusApplicationTest`](src/test/java/org/acme/QuarkusApplicationTest.java) verifies the end-to-end flow by combining a local Knative broker with a LocalStack-backed S3 bucket.
 
-### Key Annotations
+### Test Setup
 
 ```java
 @QuarkusTest
 @CitrusSupport
-class QuarkusApplicationTest implements TestActionSupport, KnativeTestActionSupport {
+@LocalStackContainerSupport(services = AwsService.S3, containerLifecycleListener = QuarkusApplicationTest.class)
+public class QuarkusApplicationTest implements TestActionSupport, ContainerLifecycleListener<LocalStackContainer> {
 ```
 
-- `@QuarkusTest`: Starts the full Quarkus application (Camel routes included) in test mode.
-- `@CitrusSupport`: Enables the Citrus framework integration with the Quarkus test lifecycle.
-- `KnativeTestActionSupport`: Provides the `knative()` fluent DSL method for Knative test actions.
+Key pieces:
+
+- `@QuarkusTest`: starts the Quarkus application and Camel route
+- `@CitrusSupport`: integrates Citrus with the test lifecycle
+- `@LocalStackContainerSupport(...)`: starts a LocalStack container with S3 enabled
+- `ContainerLifecycleListener<LocalStackContainer>`: injects dynamic S3 connection properties into the Camel Kamelet configuration when the container starts
 
 ### Creating a Local Knative Broker
 
@@ -96,13 +108,19 @@ runner.given(
 );
 ```
 
-`ClusterType.LOCAL` is the key detail. When Citrus encounters this, instead of making Kubernetes API calls to create a real Knative Broker resource, it:
+`ClusterType.LOCAL` tells Citrus to create a local HTTP broker endpoint instead of calling the Kubernetes API.
 
-1. Starts a local Jetty HTTP server on port 8080.
-2. Registers it under the name `"default"` in the Citrus context.
-3. Stores the broker port as a test variable so the `receive()` action knows which server to read from.
+### Triggering the Event Source
 
-This local HTTP server listens for the CloudEvent HTTP POST requests that the Camel route sends to `http://localhost:8080`.
+The test uploads a file into LocalStack S3:
+
+```java
+runner.when(this::uploadS3File);
+```
+
+Inside [`uploadS3File()`](src/test/java/org/acme/QuarkusApplicationTest.java:67), the test performs a multipart upload to the bucket `knative-bucket` with the content `Hello Knative!`. The Camel `aws-s3-source` Kamelet consumes that object and forwards it as a CloudEvent.
+
+When LocalStack starts, the test also creates the bucket and returns the Camel Kamelet properties needed to connect to the emulated S3 endpoint from [`started()`](src/test/java/org/acme/QuarkusApplicationTest.java:86).
 
 ### Receiving and Verifying CloudEvents
 
@@ -112,31 +130,32 @@ runner.then(
         .event()
         .receive()
         .serviceName("default")
-        .eventData("${timer.message}")
-        .attribute("ce-id", "@notNull()@")
-        .attribute("ce-type", "org.apache.camel.event.messages")
-        .attribute("ce-source", "org.apache.camel")
-        .attribute("Content-Type", "text/plain")
+        .eventData(s3Data)
+        .attribute("ce-id", "@matches([0-9A-Z]{15}-[0-9]{16})@")
+        .attribute("ce-type", "dev.knative.eventing.aws-s3")
+        .attribute("ce-source", "dev.knative.eventing.aws-s3-source")
+        .attribute("ce-subject", "aws-s3-source")
 );
 ```
 
-The `receive()` action waits on the local HTTP server for an incoming CloudEvent and validates:
+The `receive()` action validates:
 
-- **`eventData`**: The message body must equal the value of the `timer.message` test variable (`"Hello Knative!"`).
-- **`ce-id`**: Must be present and non-null (Camel generates a UUID per event).
-- **`ce-type`**: Must be `"org.apache.camel.event.messages"`, matching the Knative endpoint path.
-- **`ce-source`**: Must be `"org.apache.camel"`, set by the `transformDataType` step.
-- **`Content-Type`**: Must be `"text/plain"` as produced by the timer source.
+- **`eventData`**: the uploaded file content
+- **`ce-id`**: a generated identifier matching the AWS S3 source event format used here
+- **`ce-type`**: `dev.knative.eventing.aws-s3`
+- **`ce-source`**: `dev.knative.eventing.aws-s3-source`
+- **`ce-subject`**: `aws-s3-source`
 
 ### Test Flow
 
 ```
-1. Citrus sets variable: timer.message = "Hello Knative!"
-2. Citrus starts local HTTP server on :8080 (the "default" Knative broker)
-3. Quarkus starts the Camel route (timer fires every 5s)
-4. Camel posts a CloudEvent to http://localhost:8080
-5. Citrus receives the HTTP POST and validates headers + body
-6. Test passes — Citrus sends HTTP 202 Accepted back to Camel
+1. Citrus starts a local Knative broker named default on localhost:8080
+2. LocalStack starts an S3 service and the test creates bucket knative-bucket
+3. Camel aws-s3-source connects to LocalStack using the injected test properties
+4. The test uploads message.txt with content "Hello Knative!"
+5. Camel consumes the new S3 object and transforms it into a CloudEvent
+6. Camel posts the CloudEvent to the Citrus local broker
+7. Citrus receives the event and validates payload plus CloudEvent attributes
 ```
 
 ## Running the Tests
@@ -145,44 +164,36 @@ The `receive()` action waits on the local HTTP server for an incoming CloudEvent
 ./mvnw verify
 ```
 
-**Expected output:**
+You can also run the module tests only:
 
+```bash
+./mvnw -pl apache-camel/camel-knative verify
 ```
-[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS
-```
-
-As with any JUnit Jupiter test, you can also run it directly from your IDE.
 
 ## Key Dependencies
 
 ```xml
-<!-- Camel Knative producer for Quarkus -->
 <dependency>
     <groupId>org.apache.camel.quarkus</groupId>
     <artifactId>camel-quarkus-knative-producer</artifactId>
 </dependency>
-
-<!-- Kamelet support + timer-source kamelet definitions -->
+<dependency>
+    <groupId>org.apache.camel.quarkus</groupId>
+    <artifactId>camel-quarkus-aws2-s3</artifactId>
+</dependency>
 <dependency>
     <groupId>org.apache.camel.quarkus</groupId>
     <artifactId>camel-quarkus-kamelet</artifactId>
 </dependency>
 <dependency>
-    <groupId>org.apache.camel.kamelets</groupId>
-    <artifactId>camel-kamelets</artifactId>
-</dependency>
-
-<!-- YAML DSL needed to load .kamelet.yaml definitions at runtime -->
-<dependency>
-    <groupId>org.apache.camel.quarkus</groupId>
-    <artifactId>camel-quarkus-yaml-dsl</artifactId>
-</dependency>
-
-<!-- Citrus Knative test support -->
-<dependency>
     <groupId>org.citrusframework</groupId>
     <artifactId>citrus-knative</artifactId>
+    <version>${citrus.version}</version>
+    <scope>test</scope>
+</dependency>
+<dependency>
+    <groupId>org.citrusframework</groupId>
+    <artifactId>citrus-testcontainers</artifactId>
     <version>${citrus.version}</version>
     <scope>test</scope>
 </dependency>
@@ -194,8 +205,10 @@ As with any JUnit Jupiter test, you can also run it directly from your IDE.
 - [Knative Eventing](https://knative.dev/docs/eventing/) — Knative event-driven architecture concepts
 - [Apache Camel Knative Component](https://camel.apache.org/components/latest/knative-component.html) — Camel Knative component reference
 - [Apache Camel Kamelets](https://camel.apache.org/camel-kamelets/) — Pre-built Camel source/sink connectors
+- [Apache Camel AWS S3 Source Kamelet](https://camel.apache.org/camel-kamelets/next/aws-s3-source.html)
 - [Knative SinkBinding](https://knative.dev/docs/eventing/custom-event-source/sinkbinding/) — How `K_SINK` is injected in real Kubernetes deployments
 - [CloudEvents Specification](https://cloudevents.io/) — CloudEvents standard
+- [LocalStack](https://www.localstack.cloud/)
 
 ---
 
