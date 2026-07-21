@@ -42,11 +42,12 @@ Each sub-project is a self-contained, runnable example that showcases a specific
 ```
 citrus-quarkus-examples/
 ├── pom.xml                  # Root aggregator POM (multi-module)
-├── apache-camel/            # Aggregator for 13 Apache Camel sub-examples
+├── apache-camel/            # Aggregator for 14 Apache Camel sub-examples
 │   ├── camel-direct/
 │   ├── camel-direct-http/
 │   ├── camel-rest-dsl/
 │   ├── camel-openapi-server/
+│   ├── camel-openapi-client/
 │   ├── camel-file-inbox/
 │   ├── camel-file-outbox/
 │   ├── camel-jms/
@@ -90,8 +91,15 @@ Word transformation pipeline (`words-in` queue → uppercase → `words-out` que
 ### event-driven-kafka
 Same word transformation pattern over Kafka topics, using `@Incoming` / `@Outgoing` reactive messaging. Demonstrates Citrus Kafka endpoint testing with a Quarkus dev-services broker.
 
+### camel-openapi-client
+Petstore API **client** built with the `camel-quarkus-rest-openapi` component. The Camel routes call an external HTTP service driven from an OpenAPI spec; Citrus acts as the simulated server. Demonstrates two complementary test styles in the same module:
+- **`PetstoreOpenApiClientTest`** — explicit `http()` server actions with exact path/body/content-type validation and hand-crafted response payloads
+- **`PetstoreOpenApiSpecTest`** — `openapi().server()` actions that derive request validation and response generation automatically from the spec
+
+Key patterns introduced: `@CitrusConfiguration` shared endpoint config, `AfterSuite` server teardown, `camel().send().fork(true)` for deadlock-safe Camel route triggering, Quarkus `%test.` profile override for the service URL.
+
 ### apache-camel (sub-modules)
-A growing set of examples each targeting a specific Apache Camel + Quarkus routing pattern and the corresponding Citrus test setup. Protocols covered include HTTP REST, SOAP/CXF, JMS, Kafka, MQTT, file I/O, PostgreSQL, AWS S3, and OpenAPI.
+A growing set of examples each targeting a specific Apache Camel + Quarkus routing pattern and the corresponding Citrus test setup. Protocols covered include HTTP REST, SOAP/CXF, JMS, Kafka, MQTT, file I/O, PostgreSQL, AWS S3, and OpenAPI (server and client).
 
 ## CI / CD
 
