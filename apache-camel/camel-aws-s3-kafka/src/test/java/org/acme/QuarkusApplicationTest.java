@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.kafka.KafkaContainer;
 import software.amazon.awssdk.services.s3.S3Client;
 
+import static org.apache.camel.builder.endpoint.StaticEndpointBuilders.aws2S3;
+
 @QuarkusTest
 @CitrusSupport
 @LocalStackContainerSupport(services = AwsService.S3,
@@ -41,6 +43,9 @@ class QuarkusApplicationTest implements TestActionSupport {
 
     private static final String BUCKET_NAME = "citrus-camel-demo";
 
+    @CitrusResource
+    LocalStackContainer localStackContainer;
+
     @CitrusEndpoint
     @KafkaEndpointConfig(topic = "s3-events")
     KafkaEndpoint s3Events;
@@ -50,16 +55,16 @@ class QuarkusApplicationTest implements TestActionSupport {
 
     @Test
     void shouldSplitS3FileToKafkaEvents() {
+        runner.given(
+            camel().bind("s3Client", localStackContainer.getClient(AwsService.S3))
+        );
+
         runner.when(
             camel()
                 .send()
-                .endpoint("aws2-s3://" + BUCKET_NAME + "?" +
-                        "overrideEndpoint=true&" +
-                        "forcePathStyle=true&" +
-                        "uriEndpointOverride={{aws.s3.uriEndpointOverride}}&" +
-                        "accessKey={{aws.s3.accessKey}}&" +
-                        "secretKey={{aws.s3.secretKey}}&" +
-                        "region={{aws.s3.region}}")
+                .endpoint(aws2S3(BUCKET_NAME)
+                        .advanced()
+                        .amazonS3Client("#s3Client")::getRawUri)
                 .message()
                 .fork(true)
                 .body("Hello Camel!\nHello Citrus!\nHello Quarkus!")
@@ -105,11 +110,13 @@ class QuarkusApplicationTest implements TestActionSupport {
             log.info("Successfully created S3 bucket: {}", BUCKET_NAME);
 
             return Map.of(
-                    "aws.s3.bucketNameOrArn", BUCKET_NAME,
-                    "aws.s3.uriEndpointOverride", serviceEndpoint,
-                    "aws.s3.accessKey", container.getAccessKey(),
-                    "aws.s3.secretKey", container.getSecretKey(),
-                    "aws.s3.region", container.getRegion()
+                    "camel.kamelet.aws-s3-source.bucketNameOrArn", BUCKET_NAME,
+                    "camel.kamelet.aws-s3-source.uriEndpointOverride", serviceEndpoint,
+                    "camel.kamelet.aws-s3-source.accessKey", container.getAccessKey(),
+                    "camel.kamelet.aws-s3-source.secretKey", container.getSecretKey(),
+                    "camel.kamelet.aws-s3-source.region", container.getRegion(),
+                    "camel.kamelet.aws-s3-source.overrideEndpoint", "true",
+                    "camel.kamelet.aws-s3-source.forcePathStyle", "true"
             );
         }
     }
