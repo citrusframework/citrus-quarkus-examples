@@ -19,6 +19,7 @@
     <module>camel-jms</module>
     <module>camel-kafka</module>
     <module>camel-knative</module>
+    <module>camel-knative-ssl</module>
     <module>camel-mqtt</module>
     <module>camel-openapi-client</module>
     <module>camel-openapi-server</module>
