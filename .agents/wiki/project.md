@@ -42,7 +42,7 @@ Each sub-project is a self-contained, runnable example that showcases a specific
 ```
 citrus-quarkus-examples/
 ├── pom.xml                  # Root aggregator POM (multi-module)
-├── apache-camel/            # Aggregator for 15 Apache Camel sub-examples
+├── apache-camel/            # Aggregator for 16 Apache Camel sub-examples
 │   ├── camel-direct/
 │   ├── camel-direct-http/
 │   ├── camel-rest-dsl/
@@ -53,6 +53,7 @@ citrus-quarkus-examples/
 │   ├── camel-jms/
 │   ├── camel-kafka/
 │   ├── camel-knative/
+│   ├── camel-knative-ssl/
 │   ├── camel-mqtt/
 │   ├── camel-postgresql/
 │   ├── camel-cxf-soap/
@@ -113,8 +114,19 @@ Key patterns:
 - **SinkBinding alignment** — the module includes a sample `src/main/kubernetes/kubernetes.yml` with a `Deployment` and `SinkBinding`, mirroring how a real Knative environment injects `K_SINK`.
 - **Extra dependencies needed for kamelets**: `camel-kamelets` and `camel-quarkus-yaml-dsl` are still required alongside `camel-quarkus-kamelet`.
 
+### camel-knative-ssl
+Same S3 → CloudEvent → Knative broker flow as `camel-knative`, but the broker endpoint is secured with TLS/SSL. Demonstrates Citrus HTTPS server testing and the Camel `KnativeSslClientOptions` wiring pattern.
+
+Key patterns:
+- **`KnativeSslClientOptions` CDI bean** — an `@ApplicationScoped` `SourceOptions` bean produces a `@Named("knativeHttpClientOptions")` `WebClientOptions` backed by `KnativeSslClientOptions(camelContext)`, wired in via `camel.component.knative.producerFactory.clientOptions=#bean:knativeHttpClientOptions`.
+- **`@BindToRegistry` HTTPS server** — the Citrus `HttpServer` is declared as a field annotated with `@BindToRegistry` (from `org.citrusframework.spi`), using `HttpEndpoints.http().server().securePort(8443).secured(HttpSecureConnection.ssl().keyStore(...).trustStore(...))`.
+- **`HttpSecureConnection` package** — the correct import is `org.citrusframework.http.security.HttpSecureConnection` (not `model`).
+- **Explicit HTTP receive/send** — instead of `knative().event().receive()`, the test uses `http().server(knativeBroker).receive().post()` and `http().server(knativeBroker).send().response(HttpStatus.OK)` directly.
+- **SSL properties via `ContainerLifecycleListener`** — `camel.knative.client.ssl.*` properties are injected at runtime through `started()` alongside the S3 connection properties; `Map.ofEntries()` is needed here because there are more than 10 entries.
+- **Test keystores** — pre-generated `server.jks`, `truststore.jks`, `client.pem`, and `client.crt` live under `src/test/resources/keystore/` (all password: `secr3t`).
+
 ### apache-camel (sub-modules)
-A growing set of examples each targeting a specific Apache Camel + Quarkus routing pattern and the corresponding Citrus test setup. Protocols covered include HTTP REST, SOAP/CXF, JMS, Kafka, Knative/CloudEvents, MQTT, file I/O, PostgreSQL, AWS S3, and OpenAPI (server and client).
+A growing set of examples each targeting a specific Apache Camel + Quarkus routing pattern and the corresponding Citrus test setup. Protocols covered include HTTP REST, SOAP/CXF, JMS, Kafka, Knative/CloudEvents, Knative/CloudEvents over SSL, MQTT, file I/O, PostgreSQL, AWS S3, and OpenAPI (server and client).
 
 ## CI / CD
 
