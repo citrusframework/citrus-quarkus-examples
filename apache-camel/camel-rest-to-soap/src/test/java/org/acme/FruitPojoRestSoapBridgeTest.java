@@ -12,11 +12,11 @@ import org.apache.camel.test.fruitservice.DeleteFruit;
 import org.apache.camel.test.fruitservice.Fruit;
 import org.apache.camel.test.fruitservice.ListFruits;
 import org.citrusframework.GherkinTestActionRunner;
-import org.citrusframework.TestActionSupport;
+import org.citrusframework.dsl.TestActionSupport;
 import org.citrusframework.annotations.CitrusEndpoint;
 import org.citrusframework.annotations.CitrusResource;
 import org.citrusframework.context.TestContext;
-import org.citrusframework.dsl.JsonSupport;
+import org.citrusframework.json.dsl.JsonSupport;
 import org.citrusframework.http.client.HttpClient;
 import org.citrusframework.http.config.annotation.HttpClientConfig;
 import org.citrusframework.quarkus.CitrusSupport;
@@ -24,7 +24,7 @@ import org.citrusframework.spi.BindToRegistry;
 import org.citrusframework.validation.xml.XmlMarshallingValidationProcessor;
 import org.citrusframework.ws.config.annotation.WebServiceServerConfig;
 import org.citrusframework.ws.server.WebServiceServer;
-import org.citrusframework.xml.Jaxb2Marshaller;
+import org.citrusframework.base.xml.Jaxb2Marshaller;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -38,7 +38,7 @@ import static org.acme.FruitPojoHelper.addFruitResponse;
 import static org.acme.FruitPojoHelper.deleteFruitResponse;
 import static org.acme.FruitPojoHelper.fruit;
 import static org.acme.FruitPojoHelper.listFruitResponse;
-import static org.citrusframework.message.builder.MarshallingPayloadBuilder.Builder.marshal;
+import static org.citrusframework.xml.message.builder.MarshallingPayloadBuilder.Builder.marshal;
 
 @QuarkusTest
 @CitrusSupport

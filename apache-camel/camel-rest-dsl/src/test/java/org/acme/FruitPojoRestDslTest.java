@@ -6,7 +6,7 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.quarkus.test.junit.QuarkusTest;
 import org.citrusframework.GherkinTestActionRunner;
-import org.citrusframework.TestActionSupport;
+import org.citrusframework.dsl.TestActionSupport;
 import org.citrusframework.annotations.CitrusEndpoint;
 import org.citrusframework.annotations.CitrusResource;
 import org.citrusframework.context.TestContext;
@@ -23,7 +23,7 @@ import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.cfg.EnumFeature;
 import tools.jackson.databind.json.JsonMapper;
 
-import static org.citrusframework.dsl.JsonSupport.marshal;
+import static org.citrusframework.json.dsl.JsonSupport.marshal;
 
 @QuarkusTest
 @CitrusSupport

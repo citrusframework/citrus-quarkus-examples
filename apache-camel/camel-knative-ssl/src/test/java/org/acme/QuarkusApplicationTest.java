@@ -5,8 +5,8 @@ import java.util.Map;
 
 import io.quarkus.test.junit.QuarkusTest;
 import org.citrusframework.GherkinTestActionRunner;
-import org.citrusframework.TestActionSupport;
-import org.citrusframework.actions.testcontainers.aws2.AwsService;
+import org.citrusframework.dsl.TestActionSupport;
+import org.citrusframework.api.actions.testcontainers.aws2.AwsService;
 import org.citrusframework.annotations.CitrusResource;
 import org.citrusframework.context.TestContext;
 import org.citrusframework.http.endpoint.builder.HttpEndpoints;

@@ -1,9 +1,9 @@
 package org.acme;
 
-import org.citrusframework.DefaultTestActions;
+import org.citrusframework.dsl.DefaultTestActions;
 import org.citrusframework.TestActions;
 import org.citrusframework.annotations.CitrusConfiguration;
-import org.citrusframework.container.AfterSuite;
+import org.citrusframework.api.container.AfterSuite;
 import org.citrusframework.http.server.HttpServer;
 import org.citrusframework.http.server.HttpServerBuilder;
 import org.citrusframework.spi.BindToRegistry;

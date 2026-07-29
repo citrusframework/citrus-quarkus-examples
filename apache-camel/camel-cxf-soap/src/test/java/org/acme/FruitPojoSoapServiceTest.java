@@ -15,7 +15,7 @@ import org.apache.camel.test.fruitservice.ListFruits;
 import org.apache.camel.test.fruitservice.ListFruitsResponse;
 import org.apache.camel.test.fruitservice.ObjectFactory;
 import org.citrusframework.GherkinTestActionRunner;
-import org.citrusframework.TestActionSupport;
+import org.citrusframework.dsl.TestActionSupport;
 import org.citrusframework.annotations.CitrusEndpoint;
 import org.citrusframework.annotations.CitrusResource;
 import org.citrusframework.context.TestContext;
@@ -24,17 +24,13 @@ import org.citrusframework.spi.BindToRegistry;
 import org.citrusframework.validation.xml.XmlMarshallingValidationProcessor;
 import org.citrusframework.ws.client.WebServiceClient;
 import org.citrusframework.ws.config.annotation.WebServiceClientConfig;
-import org.citrusframework.ws.message.SoapMessage;
-import org.citrusframework.xml.Jaxb2Marshaller;
+import org.citrusframework.base.xml.Jaxb2Marshaller;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.ws.soap.SoapMessageFactory;
 import org.springframework.ws.soap.saaj.SaajSoapMessageFactory;
 
-import static org.citrusframework.message.builder.MarshallingPayloadBuilder.Builder.marshal;
+import static org.citrusframework.xml.message.builder.MarshallingPayloadBuilder.Builder.marshal;
 
 @QuarkusTest
 @CitrusSupport

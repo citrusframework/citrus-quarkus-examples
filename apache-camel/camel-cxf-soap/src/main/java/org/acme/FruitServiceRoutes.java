@@ -39,6 +39,6 @@ public class FruitServiceRoutes extends RouteBuilder {
     @Override
     public void configure() throws Exception {
         from("cxf:bean:fruitEndpoint")
-                .recipientList(simple("bean:fruitService?method=${header.operationName}"));
+                .recipientList(simple("bean:fruitService?method=${header.CamelCxfOperationName}"));
     }
 }
